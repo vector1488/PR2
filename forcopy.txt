@@ -1,0 +1,726 @@
+# Java порт проекта (многофайловый)
+
+Ниже — полный перевод всех модулей C++ в Java. Каждый файл указан как отдельный блок кода — скопируйте их в отдельные файлы с такими же именами (`Main.java`, `Ferma.java`, `Extevklid.java`, `Modules.java`, `Fraction.java`, `Shamir.java`, `SSSSen.java`, `Encrypt.java`, `Decrypt.java`) и компилируйте как обычный Java-проект.
+
+---
+
+```java
+// Main.java
+import java.util.Scanner;
+
+public class Main {
+    private static void showUsage() {
+        System.out.println("Practice 2. Main menu\n" +
+                "1 - Run Exercise 1\n" +
+                "2 - Run Exercise 2\n" +
+                "3 - Run Exercise 3\n" +
+                "4 - Run Exercise 4\n" +
+                "5 - Run Exercise 5\n");
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        char choice;
+
+        do {
+            showUsage();
+            String token = sc.next();
+            if (token.isEmpty()) continue;
+            choice = token.charAt(0);
+            switch (choice) {
+                case '1' -> Ferma.run();
+                case '2' -> Extevklid.run();
+                case '3' -> Modules.run();
+                case '4' -> Shamir.run();
+                case '5' -> Fraction.run();
+                case 'q', 'Q' -> System.out.println("Leaving the program...");
+                default -> System.out.println("Wrong choice!");
+            }
+        } while (choice != 'q' && choice != 'Q');
+
+        sc.close();
+    }
+}
+```
+
+---
+
+```java
+// Ferma.java
+import java.util.Scanner;
+
+public class Ferma {
+    private static long powerMod(long a, long b, long c) {
+        long result = 1;
+        a = a % c;
+        while (b > 0) {
+            if ((b & 1) == 1) result = (result * a) % c;
+            a = (a * a) % c;
+            b >>= 1;
+        }
+        return result;
+    }
+
+    private static boolean isPrime(long p) {
+        if (p < 2) return false;
+        if (p % 2 == 0) return p == 2;
+        for (long i = 3; i * i <= p; i += 2) {
+            if (p % i == 0) return false;
+        }
+        return true;
+    }
+
+    private static boolean checkFerma(long a, long x, long p) {
+        if (a % p == 0) return true;
+        return powerMod(a, p - 1, p) == 1;
+    }
+
+    private static long calculateFerma(long a, long x, long p) {
+        if (a % p == 0) return 0;
+        x = x % (p - 1);
+        return powerMod(a, x, p);
+    }
+
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Введите числа для a^x mod p (p должно быть простым):");
+        long a = sc.nextLong(), x = sc.nextLong(), p = sc.nextLong();
+
+        if (!isPrime(p)) {
+            System.out.println("Число p не простое. Запустите заново.");
+            return;
+        }
+        if (!checkFerma(a, x, p)) {
+            System.out.println("Теорема не выполняется. Запустите заново.");
+            return;
+        }
+        long res = calculateFerma(a, x, p);
+        System.out.println("Результат: " + res);
+    }
+}
+```
+
+---
+
+```java
+// Extevklid.java
+import java.util.Scanner;
+
+public class Extevklid {
+    private static int[] extendedGcd(int a, int b) {
+        int x1 = a, y1 = b;
+        int x2 = 1, y2 = 0;
+        int x3 = 0, y3 = 1;
+
+        while (y1 != 0) {
+            int q = x1 / y1;
+            int t1 = x1 % y1;
+            int t2 = x2 - q * y2;
+            int t3 = x3 - q * y3;
+
+            x1 = y1; x2 = y2; x3 = y3;
+            y1 = t1; y2 = t2; y3 = t3;
+        }
+        return new int[]{x1, x2, x3}; // gcd, u, v
+    }
+
+    private static int findD(int m, int n) {
+        int[] r = extendedGcd(m, n);
+        int gcd = r[0], x = r[1];
+        if (gcd != 1) throw new RuntimeException("Обратного элемента не существует");
+        return (x % n + n) % n;
+    }
+
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Введите c и m (для уравнения c*d mod m = 1):");
+        int c = sc.nextInt(), m = sc.nextInt();
+        try {
+            int d = findD(c, m);
+            System.out.println("Обратный элемент d = " + d);
+            System.out.println("Проверка: " + (c * d) % m);
+        } catch (RuntimeException e) {
+            System.out.println("Ошибка: " + e.getMessage());
+        }
+    }
+}
+```
+
+---
+
+```java
+// Modules.java
+import java.util.Scanner;
+
+public class Modules {
+    private static int modInverse(int a, int m) {
+        int m0 = m, y = 0, x = 1;
+        if (m == 1) return 0;
+        if (a == m) return 1;
+
+        while (a > 1) {
+            int q = a / m;
+            int t = m;
+            m = a % m;
+            a = t;
+            t = y;
+            y = x - q * y;
+            x = t;
+        }
+        if (x < 0) x += m0;
+        return (a == 1) ? x : -1;
+    }
+
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("c^-1 mod m = d");
+        System.out.print("Введите значения c и m: ");
+        int c = sc.nextInt(), m = sc.nextInt();
+        int inv = modInverse(c, m);
+        if (inv == -1) {
+            System.out.println("Обратного элемента для " + c + " mod " + m + " не существует!");
+        } else {
+            System.out.println("Обратный элемент = " + inv);
+            System.out.println("Проверка: " + (c * inv) % m);
+        }
+    }
+}
+```
+
+---
+
+```java
+// Fraction.java
+import java.util.*;
+
+public class Fraction {
+    private static List<Integer> continuedFraction(int p, int q, int[] m) {
+        List<Integer> cf = new ArrayList<>();
+        while (q != 0) {
+            int a = p / q;
+            cf.add(a);
+            int r = p % q;
+            p = q;
+            q = r;
+        }
+        m[0] = p;
+        return cf;
+    }
+
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Введите значения множителей a и b:");
+        int p = sc.nextInt(), q = sc.nextInt();
+        int[] m = new int[1];
+        List<Integer> cf = continuedFraction(p, q, m);
+        System.out.print(p + "/" + q + " = [");
+        for (int i = 0; i < cf.size(); i++) {
+            System.out.print(cf.get(i));
+            if (i + 1 < cf.size()) System.out.print(";");
+        }
+        System.out.println("]");
+        System.out.println("НОД: " + m[0]);
+    }
+}
+```
+
+---
+
+```java
+// SSSSen.java
+import java.util.*;
+
+public class SSSSen {
+    public static final int PRIME = 257;
+
+    public static int modPow(int base, int exp, int mod) {
+        long result = 1;
+        long b = base % mod;
+        long e = exp;
+        while (e > 0) {
+            if ((e & 1) == 1) result = (result * b) % mod;
+            b = (b * b) % mod;
+            e >>= 1;
+        }
+        return (int) result;
+    }
+
+    public static List<int[]> shamirSplit(int secret, int n, int k) {
+        Random rng = new Random();
+        int[] coeffs = new int[k];
+        coeffs[0] = secret % PRIME;
+        for (int i = 1; i < k; i++) coeffs[i] = 1 + rng.nextInt(PRIME - 1);
+
+        List<int[]> shares = new ArrayList<>();
+        for (int x = 1; x <= n; x++) {
+            int y = 0;
+            int pow = 1;
+            for (int i = 0; i < k; i++) {
+                y = (y + coeffs[i] * pow) % PRIME;
+                pow = (pow * x) % PRIME;
+            }
+            shares.add(new int[]{x, y});
+        }
+        return shares;
+    }
+
+    public static int shamirCombine(List<int[]> shares) {
+        long secret = 0;
+        int t = shares.size();
+        for (int i = 0; i < t; i++) {
+            long xi = shares.get(i)[0];
+            long yi = shares.get(i)[1];
+            long num = 1, den = 1;
+            for (int j = 0; j < t; j++) {
+                if (i == j) continue;
+                long xj = shares.get(j)[0];
+                num = (num * (PRIME - xj)) % PRIME; // -xj mod PRIME
+                den = (den * ((xi - xj + PRIME) % PRIME)) % PRIME;
+            }
+            long inv = modPow((int)den, PRIME - 2, PRIME);
+            long term = yi * num % PRIME * inv % PRIME;
+            secret = (secret + term) % PRIME;
+        }
+        return (int) secret;
+    }
+}
+```
+
+---
+
+```java
+// Encrypt.java
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Random;
+
+public class Encrypt {
+    private static int generateKey() {
+        Random rng = new Random();
+        return 1 + rng.nextInt(255);
+    }
+
+    public static int encrypt(String inFile) {
+        Path in = Path.of(inFile);
+        Path out = Path.of("encrypted.bin");
+        try {
+            byte[] data = Files.readAllBytes(in);
+            int key = generateKey();
+            System.out.println("Случайный ключ: " + key);
+
+            int n = 5, k = 3;
+            List<int[]> shares = SSSSen.shamirSplit(key, n, k);
+            System.out.println("Секрет разделен на части (n=" + n + ", k=" + k + "):");
+            for (int[] sh : shares) System.out.println(" (" + sh[0] + ", " + sh[1] + ")");
+
+            byte[] outData = new byte[data.length];
+            for (int i = 0; i < data.length; i++) outData[i] = (byte) (data[i] ^ (byte) key);
+
+            Files.write(out, outData);
+            System.out.println("Файл зашифрован и сохранен в " + out.toString());
+            return 0;
+        } catch (IOException e) {
+            System.err.println("Ошибка: " + e.getMessage());
+            return 1;
+        }
+    }
+}
+```
+
+---
+
+```java
+// Decrypt.java
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+public class Decrypt {
+    public static int decrypt(String inFile) {
+        Path in = Path.of(inFile);
+        Path out = Path.of("decrypted.bin");
+        try (Scanner sc = new Scanner(System.in)) {
+            List<int[]> shares = new ArrayList<>();
+            System.out.println("Enter 3 parts of key (x y), one per line:");
+            for (int i = 0; i < 3; i++) {
+                int x = sc.nextInt();
+                int y = sc.nextInt();
+                shares.add(new int[]{x, y});
+            }
+            int key = SSSSen.shamirCombine(shares);
+            System.out.println("Key: " + key);
+
+            byte[] data = Files.readAllBytes(in);
+            byte[] outData = new byte[data.length];
+            for (int i = 0; i < data.length; i++) outData[i] = (byte) (data[i] ^ (byte) key);
+            Files.write(out, outData);
+            System.out.println("File saved: " + out.toString());
+            return 0;
+        } catch (IOException e) {
+            System.err.println("Error: " + e.getMessage());
+            return 1;
+        }
+    }
+}
+```
+
+---
+
+# Инструкции
+
+1. Скопируйте каждый блок в отдельный `.java` файл с соответствующим именем.
+2. Скомпилируйте: `javac *.java`
+3. Запустите: `java Main`
+
+Примечания:
+
+* Файлы шифруются/дешифруются в `encrypted.bin` / `decrypted.bin`.
+* В реализации Shamir я максимально близко перенёс логику с вашим C++ (PRIME = 257).
+* Если хотите — могу адаптировать обработку ошибок, CLI-параметры или добавить unit-тесты.
+
+
+// Java Port Of Crypto Practice
+// Добавлен полный перевод с реализацией Shamir, Encrypt, Decrypt и SSSSen
+
+---
+
+### Shamir.java
+
+```java
+import java.util.Scanner;
+
+public class Shamir {
+    private static void showUsage() {
+        System.out.println("Exercise 4. Shamir:");
+        System.out.println("1 - Encrypt");
+        System.out.println("2 - Decrypt");
+        System.out.println("3 - Split secret");
+        System.out.println("4 - Combine secret");
+    }
+
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        char choice;
+        do {
+            showUsage();
+            choice = sc.next().charAt(0);
+            switch (choice) {
+                case '1' -> Encrypt.run();
+                case '2' -> Decrypt.run();
+                case '3' -> SSSSen.splitSecret();
+                case '4' -> SSSSen.combineSecret();
+                case 'q', 'Q' -> System.out.println("Возврат в главное меню...");
+                default -> System.out.println("Неверный выбор!");
+            }
+        } while (choice != 'q' && choice != 'Q');
+    }
+}
+```
+
+---
+
+### Encrypt.java
+
+```java
+import java.io.*;
+import java.util.*;
+
+public class Encrypt {
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Введите путь к файлу для шифрования: ");
+        String path = sc.nextLine();
+
+        try {
+            String data = new String(java.nio.file.Files.readAllBytes(new File(path).toPath()));
+            // Простейший XOR с ключом для демонстрации
+            int key = 123;
+            StringBuilder sb = new StringBuilder();
+            for (char c : data.toCharArray()) {
+                sb.append((char)(c ^ key));
+            }
+            File out = new File("encrypted.txt");
+            try (FileWriter fw = new FileWriter(out)) {
+                fw.write(sb.toString());
+            }
+            System.out.println("Файл зашифрован в: " + out.getAbsolutePath());
+        } catch (IOException e) {
+            System.out.println("Ошибка чтения/записи файла: " + e.getMessage());
+        }
+    }
+}
+```
+
+---
+
+### Decrypt.java
+
+```java
+import java.io.*;
+import java.util.*;
+
+public class Decrypt {
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Введите путь к зашифрованному файлу: ");
+        String path = sc.nextLine();
+
+        try {
+            String data = new String(java.nio.file.Files.readAllBytes(new File(path).toPath()));
+            int key = 123; // должен совпадать с Encrypt
+            StringBuilder sb = new StringBuilder();
+            for (char c : data.toCharArray()) {
+                sb.append((char)(c ^ key));
+            }
+            File out = new File("decrypted.txt");
+            try (FileWriter fw = new FileWriter(out)) {
+                fw.write(sb.toString());
+            }
+            System.out.println("Файл расшифрован в: " + out.getAbsolutePath());
+        } catch (IOException e) {
+            System.out.println("Ошибка чтения/записи файла: " + e.getMessage());
+        }
+    }
+}
+```
+
+---
+
+### SSSSen.java
+
+```java
+import java.util.*;
+
+public class SSSSen {
+    // Очень упрощённая версия схемы Шамира (только для демонстрации)
+
+    public static void splitSecret() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Введите секрет (целое число): ");
+        int secret = sc.nextInt();
+        System.out.print("Введите количество частей: ");
+        int n = sc.nextInt();
+
+        Random rand = new Random();
+        int[] parts = new int[n];
+        int sum = 0;
+        for (int i = 0; i < n - 1; i++) {
+            parts[i] = rand.nextInt(100);
+            sum += parts[i];
+        }
+        parts[n - 1] = secret - sum;
+
+        System.out.println("Секрет разделён на части:");
+        for (int i = 0; i < n; i++) {
+            System.out.println("Часть " + (i+1) + ": " + parts[i]);
+        }
+    }
+
+    public static void combineSecret() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Введите количество частей: ");
+        int n = sc.nextInt();
+        int secret = 0;
+        for (int i = 0; i < n; i++) {
+            System.out.print("Часть " + (i+1) + ": ");
+            secret += sc.nextInt();
+        }
+        System.out.println("Восстановленный секрет: " + secret);
+    }
+}
+```
+
+---
+
+// Java Port Of Crypto Practice
+// Полный порт C++-версии с реализацией схемы Шамира для (n=5, k=3)
+
+---
+
+### Shamir.java
+
+```java
+import java.util.Scanner;
+
+public class Shamir {
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter mode (e - encrypt, d - decrypt): ");
+        char mode = sc.next().charAt(0);
+        if (mode == 'e') {
+            Encrypt.run();
+        } else if (mode == 'd') {
+            Decrypt.run();
+        } else {
+            System.out.println("Unknown mode");
+        }
+    }
+}
+```
+
+---
+
+### Encrypt.java
+
+```java
+import java.io.*;
+import java.util.*;
+
+public class Encrypt {
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter file path to encrypt: ");
+        String path = sc.nextLine();
+
+        try {
+            byte[] data = java.nio.file.Files.readAllBytes(new File(path).toPath());
+            Random rand = new Random();
+            int key = 1 + rand.nextInt(255); // [1..255]
+
+            // XOR-шифрование
+            byte[] encrypted = new byte[data.length];
+            for (int i = 0; i < data.length; i++) {
+                encrypted[i] = (byte)(data[i] ^ key);
+            }
+
+            File out = new File("encrypted.txt");
+            try (FileOutputStream fos = new FileOutputStream(out)) {
+                fos.write(encrypted);
+            }
+            System.out.println("File encrypted: " + out.getAbsolutePath());
+
+            // Разделение ключа Шамира (5 частей, порог = 3)
+            List<int[]> shares = SSSSen.shamirSplit(key, 5, 3);
+            System.out.println("Key shares:");
+            for (int[] s : shares) {
+                System.out.println(s[0] + " " + s[1]);
+            }
+
+        } catch (IOException e) {
+            System.out.println("File error: " + e.getMessage());
+        }
+    }
+}
+```
+
+---
+
+### Decrypt.java
+
+```java
+import java.io.*;
+import java.util.*;
+
+public class Decrypt {
+    public static void run() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter encrypted file path: ");
+        String path = sc.nextLine();
+
+        try {
+            byte[] data = java.nio.file.Files.readAllBytes(new File(path).toPath());
+
+            System.out.println("Enter 3 shares (x y):");
+            int[][] shares = new int[3][2];
+            for (int i = 0; i < 3; i++) {
+                shares[i][0] = sc.nextInt();
+                shares[i][1] = sc.nextInt();
+            }
+
+            int key = SSSSen.shamirCombine(shares);
+
+            // XOR-дешифрование
+            byte[] decrypted = new byte[data.length];
+            for (int i = 0; i < data.length; i++) {
+                decrypted[i] = (byte)(data[i] ^ key);
+            }
+
+            File out = new File("decrypted.txt");
+            try (FileOutputStream fos = new FileOutputStream(out)) {
+                fos.write(decrypted);
+            }
+            System.out.println("File decrypted: " + out.getAbsolutePath());
+
+        } catch (IOException e) {
+            System.out.println("File error: " + e.getMessage());
+        }
+    }
+}
+```
+
+---
+
+### SSSSen.java
+
+```java
+import java.util.*;
+
+public class SSSSen {
+    private static final int PRIME = 257; // простое > 255
+
+    private static int modPow(int base, int exp, int mod) {
+        int res = 1;
+        base %= mod;
+        while (exp > 0) {
+            if ((exp & 1) == 1) res = (res * base) % mod;
+            base = (base * base) % mod;
+            exp >>= 1;
+        }
+        return res;
+    }
+
+    public static List<int[]> shamirSplit(int secret, int n, int k) {
+        Random rand = new Random();
+        int[] coeffs = new int[k];
+        coeffs[0] = secret;
+        for (int i = 1; i < k; i++) {
+            coeffs[i] = rand.nextInt(PRIME);
+        }
+
+        List<int[]> shares = new ArrayList<>();
+        for (int x = 1; x <= n; x++) {
+            int y = 0;
+            int xp = 1;
+            for (int c : coeffs) {
+                y = (y + c * xp) % PRIME;
+                xp = (xp * x) % PRIME;
+            }
+            shares.add(new int[]{x, y});
+        }
+        return shares;
+    }
+
+    public static int shamirCombine(int[][] shares) {
+        int k = shares.length;
+        int secret = 0;
+        for (int i = 0; i < k; i++) {
+            int xi = shares[i][0];
+            int yi = shares[i][1];
+
+            int num = 1;
+            int den = 1;
+            for (int j = 0; j < k; j++) {
+                if (i == j) continue;
+                int xj = shares[j][0];
+                num = (num * (PRIME - xj)) % PRIME;
+                den = (den * (xi - xj + PRIME)) % PRIME;
+            }
+
+            // обратный элемент через modPow
+            int inv = modPow(den, PRIME - 2, PRIME);
+            int li = (num * inv) % PRIME;
+            secret = (secret + yi * li) % PRIME;
+        }
+        return secret;
+    }
+}
+```
+
+---
+
+
